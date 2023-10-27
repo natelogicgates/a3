@@ -6,7 +6,7 @@ CC=g++
 CCFLAGS=-std=c++11 -Wall -g3 -c
 
 # object files
-OBJS = log_helpers.o main.o 
+OBJS = log_helpers.o demandpaging.o 
 
 # Program name
 PROGRAM = demandpaging
@@ -15,10 +15,10 @@ PROGRAM = demandpaging
 $(PROGRAM) : $(OBJS)
 	$(CC) -pthread -o $(PROGRAM) $(OBJS)
 
-main.o : main.cpp
-	$(CC) $(CCFLAGS) main.cpp
+demandpaging.o : demandpaging.cpp demandpaging.h
+	$(CC) $(CCFLAGS) demandpaging.cpp
 	
-log_helpers.o: log_helpers.c log_helpers.c
+log_helpers.o: log_helpers.c log_helpers.h
 	$(CC) $(CCFLAGS) log_helpers.c
 # Once things work, people frequently delete their object files.
 # If you use "make clean", this will do it for you.
