@@ -6,7 +6,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctime>
-#include "log_helpers.h"  // Assuming the log_helpers code is saved in log_helpers.h
+#include "log_helpers.h" 
+#include "demandpaging.h"
 
 const int PAGE_SIZE = 4096;
 const int PAGE_TABLE_ENTRIES = 1024;
