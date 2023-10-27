@@ -13,7 +13,7 @@ PROGRAM = demandpaging
 
 # The program depends upon its object files
 $(PROGRAM) : $(OBJS)
-	$(CC) -pthread -o $(PROGRAM) $(OBJS)
+	$(CC) -o $(PROGRAM) $(OBJS)
 
 demandpaging.o : demandpaging.cpp demandpaging.h
 	$(CC) $(CCFLAGS) demandpaging.cpp
