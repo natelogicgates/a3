@@ -152,57 +152,6 @@ public:
     }
 };
 
-void printOffset(int virtual_address) {
-        int offset = virtual_address % PAGE_SIZE;
-        std::cout << std::hex << std::setw(8) << offset << std::endl;
-    }
-
-    void printVpnsPfn() {
-       for (size_t i = 0; i < frames.size(); ++i) {
-            if (!frames[i].free) {
-                std::cout << std::hex << std::setw(1) << std::setfill('0') << frames[i].VPN 
-                          << " " << std::setw(1) << frames[i].PFN 
-                          << " " << std::setw(2) << frames[i].timestamp 
-                          << " -> " << std::setw(1) << i << std::endl;
-            }
-        }
-    }
-
-    void printVa2Pa(int virtual_address) {
-        int physical_address = translateAddress(virtual_address, 'R'); // Assuming 'R' for read access
-        if (physical_address != -1) {
-            std::cout << std::hex << std::setw(8) << std::setfill('0') << virtual_address
-                      << " -> " << std::setw(8) << physical_address << std::endl;
-        } else {
-            std::cout << "Page fault occurred for virtual address: " << std::hex << virtual_address << "!" << std::endl;
-        }
-    }
-
-    void printVpn2PfnPr(int virtual_address) {
-        int offset = virtual_address % PAGE_SIZE;
-        int vpn = virtual_address / PAGE_SIZE;
-        int pa = translateAddress(virtual_address, 'R'); // Assuming 'R' for read access
-        if (pa != -1) {
-            int pfn = pa / PAGE_SIZE;
-            std::cout << std::hex << std::setw(8) << vpn
-                      << " -> " << std::setw(8) << pfn
-                      << ", pagetable hit" << std::endl;
-        } else {
-            std::cout << "Page fault occurred for virtual address: " << std::hex << virtual_address << "!" << std::endl;
-        }
-    }
-
-
-    void printSummary() {
-        std::cout << "Page size: " << PAGE_SIZE << " bytes\n";
-        std::cout << "Addresses processed: " << numOfAddresses << "\n";
-        std::cout << "Page hits: " << pageTableHits << ", Misses: " << (numOfAddresses - pageTableHits) << ", Page Replacements: " << numOfPageReplaces << "\n";
-        std::cout << "Page hit percentage: " << ((double)pageTableHits / numOfAddresses * 100) << "%, miss percentage: " << ((double)(numOfAddresses - pageTableHits) / numOfAddresses * 100) << "%\n";
-        std::cout << "Frames allocated: " << numOfFramesAllocated << "\n";
-        std::cout << "Bytes used: " << totalBytesUsed << "\n";
-    }
-};
-
 int main(int argc, char *argv[]) {
     if (argc < 4) {
         std::cerr << "Usage: " << argv[0] << " trace_file readwrite_file num_frames" << std::endl;
@@ -311,25 +260,6 @@ int main(int argc, char *argv[]) {
 
     if (logOptions.summary) {
         log_summary(PAGE_SIZE, memoryManagement.numOfPageReplaces, memoryManagement.pageTableHits, memoryManagement.numOfAddresses, memoryManagement.numOfFramesAllocated, memoryManagement.totalBytesUsed);
-    }
-    if (logOptions.offset) {
-        memoryManagement.printOffsets();
-    }
-
-     if (std::string(argv[3]) == "-l" && std::string(argv[4]) == "vpns_pfn") {
-        memoryManagement.printVpnsPfn();
-    }
-
-    if (logOptions.addressTranslation) {
-        memoryManagement.printVa2Pa();
-    }
-
-    if (logOptions.vpn2pfn_with_pagereplace) {
-        memoryManagement.printVpn2PfnPr();
-    }
-
-    if (logOptions.summary) {
-        memoryManagement.printSummary();
     }
 
     return 0;
