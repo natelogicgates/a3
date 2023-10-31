@@ -224,7 +224,7 @@ int main(int argc, char *argv[]) {
 
     std::ifstream traceFile(traceFilePath);
     if (!traceFile.is_open()) {
-        std::cerr << "Failed to open trace file: " << traceFilePath << std::endl;
+        std::cerr << "Number of available frames must be a number, greater than 0" << std::endl;
         return 1;
     }
 
