@@ -3,6 +3,7 @@
 #include <queue>
 #include <fstream>
 #include <cmath>
+#include <cstring>
 #include <stdio.h>
 #include <string.h>
 #include <ctime>
@@ -12,6 +13,16 @@
 const int PAGE_SIZE = 4096;
 const int PAGE_TABLE_ENTRIES = 1024;
 const int ADDRESS_SPACE = 32;
+
+struct LogOptionsType {
+    bool pagetable_bitmasks = false;
+    bool addressTranslation = false;
+    bool vpns_pfn = false;
+    bool vpn2pfn_with_pagereplace = false;
+    bool offset = false;
+    bool summary = false;
+};
+
 
 class PTE {
 public:
@@ -139,9 +150,9 @@ public:
 
     void logPageTableMapping(int vpn, int frameNumber, bool isPageReplacement) {
         if (logOptions.vpn2pfn_with_pagereplace && isPageReplacement) {
-            log_mapping(vpn, frameNumber, frames[frameNumber].VPN, true);
+            log_mapping(vpn, frameNumber, frames[frameNumber].VPN, false);
         } else if (logOptions.vpns_pfn) {
-            log_mapping(vpn, frameNumber, -1, false);
+            log_mapping(vpn, frameNumber, -1, true);
         }
     }
 
