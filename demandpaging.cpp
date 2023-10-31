@@ -78,7 +78,7 @@ public:
         logPageTableMapping(vpn, frameNumber, false);
     }
 
-    int translateAddress(int virtual_address) {
+    int translateAddress(int virtual_address, char accessMode) {
         numOfAddresses++;
 
         int offset = virtual_address % PAGE_SIZE;
@@ -153,6 +153,29 @@ public:
 };
 
 int main(int argc, char *argv[]) {
+    std::string readWriteFilePath;
+    if (argc > 3) {
+        readWriteFilePath = argv[3];
+    } else {
+        std::cerr << "Usage: " << argv[0] << " trace_file readwrite_file" << std::endl;
+        return 1;
+    }
+
+    std::ifstream readWriteFile(readWriteFilePath);
+    if (!readWriteFile.is_open()) {
+        std::cerr << "Failed to open read/write file: " << readWriteFilePath << std::endl;
+        return 1;
+    }
+
+    std::string accessModes;
+    std::getline(readWriteFile, accessModes);
+    readWriteFile.close();
+
+    if (accessModes.size() == 0) {
+        std::cerr << "Read/write file is empty" << std::endl;
+        return 1;
+    }
+    
     LogOptionsType logOptions;
     logOptions.pagetable_bitmasks = true;
     logOptions.addressTranslation = true;
@@ -161,14 +184,7 @@ int main(int argc, char *argv[]) {
     logOptions.offset = false;
     logOptions.summary = false;
 
-    /*MemoryManagement memoryManagement(256, logOptions);
-    int virtual_address = 0x12345678;
-    int physical_address = memoryManagement.translateAddress(virtual_address);
-    if (physical_address != -1) {
-        std::cout << "Translated to physical address: " << std::hex << physical_address << std::endl;
-    } else {
-        std::cout << "Page fault occurred!" << std::endl;
-    }*/
+    
     std::string traceFilePath;
     int n = 256;  // Default number of frames
     for (int i = 1; i < argc; i++) {
@@ -203,7 +219,7 @@ int main(int argc, char *argv[]) {
     if (!traceFilePath.empty()) {
         std::ifstream traceFile(traceFilePath);
         if (!traceFile.is_open()) {
-            std::cerr << "Failed to open trace file: " << traceFilePath << std::endl;
+            std::cerr << "Number of available frames must be a number, greater than 0" << std::endl;
             return 1;
         }
 
@@ -221,6 +237,7 @@ int main(int argc, char *argv[]) {
         }
 
         traceFile.close();
+        readWriteFile.close();
     }
 
     if (logOptions.summary) {
