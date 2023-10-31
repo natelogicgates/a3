@@ -39,6 +39,12 @@ class MemoryManagement {
     int clock_hand;
     LogOptionsType logOptions;
 
+    int numOfPageReplaces = 0;
+    int pageTableHits = 0;
+    int numOfAddresses = 0;
+    int numOfFramesAllocated = 0;
+    int totalBytesUsed = 0;
+
 public:
     MemoryManagement(size_t num_frames, LogOptionsType logOpt) : clock_hand(0), logOptions(logOpt) {
         for (size_t i = 0; i < num_frames; i++) {
@@ -46,37 +52,40 @@ public:
         }
         topLevel = new PTE[PAGE_TABLE_ENTRIES];
     }
+
     void allocateFrameToPage(int vpn, int frameNumber) {
-    PTE* currentLevel = topLevel;
-    for (int i = ADDRESS_SPACE - 1; i >= 0; i--) {
-        int index = (vpn >> i) & (PAGE_TABLE_ENTRIES - 1);
-        
-        // If we've reached the last level of the page table, we allocate the frame
-        if (i == 0) {
-            currentLevel[index].valid = true;
-            currentLevel[index].PFN = frameNumber;
-            frames[frameNumber].free = false;
-            frames[frameNumber].VPN = vpn;
-            frames[frameNumber].timestamp = std::time(nullptr);  // setting current time as timestamp for simplicity
-            if (logOptions.vpn2pfn_with_pagereplace) {
-                //log_frame_allocation(frames[frameNumber].PFN, frames[frameNumber].VPN);  // Logging frame allocation
+        numOfFramesAllocated++;
+        totalBytesUsed = numOfFramesAllocated * PAGE_SIZE;
+
+        PTE* currentLevel = topLevel;
+        for (int i = ADDRESS_SPACE - 1; i >= 0; i--) {
+            int index = (vpn >> i) & (PAGE_TABLE_ENTRIES - 1);
+            
+            if (i == 0) {
+                currentLevel[index].valid = true;
+                currentLevel[index].PFN = frameNumber;
+                frames[frameNumber].free = false;
+                frames[frameNumber].VPN = vpn;
+                frames[frameNumber].timestamp = std::time(nullptr);
+            } else {
+                if (!currentLevel[index].next_level) {
+                    currentLevel[index].next_level = new PTE[PAGE_TABLE_ENTRIES];
+                }
+                currentLevel = currentLevel[index].next_level;
             }
-        } else {
-            // If the next level page table is not yet allocated, we allocate it
-            if (!currentLevel[index].next_level) {
-                currentLevel[index].next_level = new PTE[PAGE_TABLE_ENTRIES];
-            }
-            currentLevel = currentLevel[index].next_level;
+        }
+
+        if (logOptions.vpn2pfn_with_pagereplace) {
+            log_mapping(vpn, frameNumber, -1, false);
         }
     }
-           if (logOptions.vpn2pfn_with_pagereplace) {
-        log_mapping(vpn, frameNumber, -1, false);
-    } 
-    }
+
     int translateAddress(int virtual_address) {
+        numOfAddresses++;
+
         int offset = virtual_address % PAGE_SIZE;
         int vpn = virtual_address / PAGE_SIZE;
-        int pa = -1;  // Default to invalid address
+        int pa = -1;
 
         PTE* currentLevel = topLevel;
         for (int i = ADDRESS_SPACE - 1; i >= 0; i--) {
@@ -84,10 +93,7 @@ public:
             if (currentLevel[index].valid) {
                 if (i == 0) {
                     pa = (currentLevel[index].PFN * PAGE_SIZE) + offset;
-                    if (logOptions.addressTranslation) {
-                        log_va2pa(virtual_address, pa);
-                    }
-                    return pa;
+                    pageTableHits++;
                 } else {
                     currentLevel = currentLevel[index].next_level;
                 }
@@ -96,33 +102,30 @@ public:
                 return -1;
             }
         }
-        return -1;
-        if (pa != -1 && logOptions.addressTranslation) {
-        log_va2pa(virtual_address, pa);
-    }
 
-    return pa;
-}
+        if (pa != -1 && logOptions.addressTranslation) {
+            log_va2pa(virtual_address, pa);
+        }
+
+        return pa;
     }
 
     void handlePageFault(int vpn) {
-    int frameNumber = findFreeFrame();
-    if (frameNumber == -1) {
-        int replacedVpn = -1;  // Placeholder, you'd need to determine the replaced VPN from your page replacement algorithm
-        frameNumber = runWSClock();
-        log_mapping(vpn, frameNumber, replacedVpn, false);  // pagetable miss and possibly a page replacement
-    } else {
-        log_mapping(vpn, frameNumber, -1, false);  // pagetable miss but no page replacement
+        int frameNumber = findFreeFrame();
+        if (frameNumber == -1) {
+            frameNumber = runWSClock();
+            int replacedVpn = frames[frameNumber].VPN;
+            numOfPageReplaces++;
+            log_mapping(vpn, frameNumber, replacedVpn, false);
+        } else {
+            log_mapping(vpn, frameNumber, -1, false);
+        }
+        allocateFrameToPage(vpn, frameNumber);
     }
-    allocateFrameToPage(vpn, frameNumber);
-}
 
     int findFreeFrame() {
         for (size_t i = 0; i < frames.size(); i++) {
             if (frames[i].free) {
-                if (logOptions.vpn2pfn_with_pagereplace) {
-                    //log_frame_allocation(frames[i].PFN, frames[i].VPN);  // Logging frame allocation
-                }
                 return i;
             }
         }
@@ -135,11 +138,11 @@ public:
             if (frame.free) {
                 return clock_hand;
             }
-            // Logic for recently accessed and older-than-threshold pages skipped for brevity
             clock_hand = (clock_hand + 1) % frames.size();
         }
     }
 };
+
 
 int main(int argc, char *argv[]) {
     LogOptionsType logOptions;
@@ -159,7 +162,7 @@ int main(int argc, char *argv[]) {
         std::cout << "Page fault occurred!" << std::endl;
     }*/
     std::string traceFilePath;
-    int n;
+    int n = 256;  // Default number of frames
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-l") == 0 && i + 1 < argc) {
             if (strcmp(argv[i + 1], "bitmasks") == 0) {
@@ -198,7 +201,7 @@ int main(int argc, char *argv[]) {
 
         std::string line;
         while (std::getline(traceFile, line)) {
-            int virtual_address = std::stoi(line, nullptr, 16); // Convert hex string to int
+            int virtual_address = std::stoi(line, nullptr, 16);
             int physical_address = memoryManagement.translateAddress(virtual_address);
             
             if (physical_address != -1) {
@@ -211,8 +214,10 @@ int main(int argc, char *argv[]) {
 
         traceFile.close();
     }
+
     if (logOptions.summary) {
-        log_summary(PAGE_SIZE, numOfPageReplaces, pageTableHits, numOfAddresses, numOfFramesAllocated, totalBytesUsed);
+        log_summary(PAGE_SIZE, memoryManagement.numOfPageReplaces, memoryManagement.pageTableHits, memoryManagement.numOfAddresses, memoryManagement.numOfFramesAllocated, memoryManagement.totalBytesUsed);
     }
+
     return 0;
 }
