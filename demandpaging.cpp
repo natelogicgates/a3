@@ -237,17 +237,23 @@ int main(int argc, char *argv[]) {
     std::string line;
     char accessMode;
     while (std::getline(traceFile, line)) {
-        int virtual_address = std::stoi(line, nullptr, 16);
-        readWriteFile.get(accessMode);
-        int physical_address = memoryManagement.translateAddress(virtual_address, accessMode);
-        
-        if (physical_address != -1) {
-            std::cout << "Virtual address: " << std::hex << virtual_address
-                      << " translated to physical address: " << physical_address << std::endl;
-        } else {
-            std::cout << "Page fault occurred for virtual address: " << std::hex << virtual_address << "!" << std::endl;
-        }
+    // Check if line is a valid hexadecimal number
+    if (line.find_first_not_of("0123456789abcdefABCDEF") != std::string::npos) {
+        std::cerr << "Invalid address in trace file: " << line << std::endl;
+        continue;
     }
+
+    int virtual_address = std::stoi(line, nullptr, 16);
+    readWriteFile.get(accessMode);
+    int physical_address = memoryManagement.translateAddress(virtual_address, accessMode);
+    
+    if (physical_address != -1) {
+        std::cout << "Virtual address: " << std::hex << virtual_address
+                  << " translated to physical address: " << physical_address << std::endl;
+    } else {
+        std::cout << "Page fault occurred for virtual address: " << std::hex << virtual_address << "!" << std::endl;
+    }
+}
 
     traceFile.close();
     readWriteFile.close();
