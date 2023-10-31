@@ -187,7 +187,22 @@ int main(int argc, char *argv[]) {
     
     std::string traceFilePath;
     int n = 256;  // Default number of frames
+    int cnt = 0;
     for (int i = 1; i < argc; i++) {
+        if(strcmp(argv[i], "0") == 0) {
+            std::cerr << "Level 'NUMBER' page table must be at least 1 bit." << std::endl;
+            return 1;
+        }
+        if(strcmp(argv[i], "readwrites.txt") == 0) {
+            int bit1 = atoi(argv[i+1]); 
+            int bit2 = atoi(argv[i+2]);
+            int bit3 = atoi(argv[i+3]);
+            cnt = bit1 + bit2 + bit3;
+            if(cnt > 28) {
+                std::cerr << "Too many bits used in page tables." << std::endl;
+                return 1;
+            }
+        }
         if (strcmp(argv[i], "-l") == 0 && i + 1 < argc) {
             if (strcmp(argv[i + 1], "bitmasks") == 0) {
                 logOptions.pagetable_bitmasks = true;
@@ -204,6 +219,10 @@ int main(int argc, char *argv[]) {
             }
             i++;
         } else if (strcmp(argv[i], "-n") == 0 && i + 1 < argc) {
+            if(strcmp(argv[i+1], "0") == 0) {
+                std::cerr << "Number of memory accesses must be a number, greater than 0." << std::endl;
+                return 1;
+            }
             n = atoi(argv[i + 1]);
             i++;
         }
@@ -211,6 +230,12 @@ int main(int argc, char *argv[]) {
         else if (strcmp(argv[i], "-f") == 0 && i + 1 < argc) {
             traceFilePath = argv[i + 1];
             i++;
+        }
+        else if (strcmp(argv[i], "-a") == 0 && i + 1 < argc) {
+            if strcmp(argv[i+1], "0") == 0) {
+                std::cerr << "Age of last access considered recent must be a number, greater than 0." << std::endl;
+                return 1;
+            }
         }
     }
 
