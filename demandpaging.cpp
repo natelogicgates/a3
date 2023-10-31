@@ -75,9 +75,7 @@ public:
             }
         }
 
-        if (logOptions.vpn2pfn_with_pagereplace) {
-            log_mapping(vpn, frameNumber, -1, false);
-        }
+        logPageTableMapping(vpn, frameNumber, false);
     }
 
     int translateAddress(int virtual_address) {
@@ -103,10 +101,7 @@ public:
             }
         }
 
-        if (pa != -1 && logOptions.addressTranslation) {
-            log_va2pa(virtual_address, pa);
-        }
-
+        logVirtualToPhysicalAddressTranslation(virtual_address, pa);
         return pa;
     }
 
@@ -116,9 +111,9 @@ public:
             frameNumber = runWSClock();
             int replacedVpn = frames[frameNumber].VPN;
             numOfPageReplaces++;
-            log_mapping(vpn, frameNumber, replacedVpn, false);
+            logPageTableMapping(vpn, frameNumber, true);
         } else {
-            log_mapping(vpn, frameNumber, -1, false);
+            logPageTableMapping(vpn, frameNumber, false);
         }
         allocateFrameToPage(vpn, frameNumber);
     }
@@ -141,8 +136,21 @@ public:
             clock_hand = (clock_hand + 1) % frames.size();
         }
     }
-};
 
+    void logPageTableMapping(int vpn, int frameNumber, bool isPageReplacement) {
+        if (logOptions.vpn2pfn_with_pagereplace && isPageReplacement) {
+            log_mapping(vpn, frameNumber, frames[frameNumber].VPN, true);
+        } else if (logOptions.vpns_pfn) {
+            log_mapping(vpn, frameNumber, -1, false);
+        }
+    }
+
+    void logVirtualToPhysicalAddressTranslation(int virtualAddress, int physicalAddress) {
+        if (logOptions.addressTranslation) {
+            log_va2pa(virtualAddress, physicalAddress);
+        }
+    }
+};
 
 int main(int argc, char *argv[]) {
     LogOptionsType logOptions;
