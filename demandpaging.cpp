@@ -39,12 +39,6 @@ class MemoryManagement {
     int clock_hand;
     LogOptionsType logOptions;
 
-    int numOfPageReplaces = 0;
-    int pageTableHits = 0;
-    int numOfAddresses = 0;
-    int numOfFramesAllocated = 0;
-    int totalBytesUsed = 0;
-
 public:
     int numOfPageReplaces = 0;
     int pageTableHits = 0;
