@@ -46,6 +46,12 @@ class MemoryManagement {
     int totalBytesUsed = 0;
 
 public:
+    int numOfPageReplaces = 0;
+    int pageTableHits = 0;
+    int numOfAddresses = 0;
+    int numOfFramesAllocated = 0;
+    int totalBytesUsed = 0;
+
     MemoryManagement(size_t num_frames, LogOptionsType logOpt) : clock_hand(0), logOptions(logOpt) {
         for (size_t i = 0; i < num_frames; i++) {
             frames.push_back(Frame(i));
