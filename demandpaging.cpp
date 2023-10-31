@@ -69,6 +69,9 @@ public:
             currentLevel = currentLevel[index].next_level;
         }
     }
+           if (logOptions.vpn2pfn_with_pagereplace) {
+        log_mapping(vpn, frameNumber, -1, false);
+    } 
     }
     int translateAddress(int virtual_address) {
         int offset = virtual_address % PAGE_SIZE;
@@ -94,6 +97,12 @@ public:
             }
         }
         return -1;
+        if (pa != -1 && logOptions.addressTranslation) {
+        log_va2pa(virtual_address, pa);
+    }
+
+    return pa;
+}
     }
 
     void handlePageFault(int vpn) {
@@ -202,6 +211,8 @@ int main(int argc, char *argv[]) {
 
         traceFile.close();
     }
-
+    if (logOptions.summary) {
+        log_summary(PAGE_SIZE, numOfPageReplaces, pageTableHits, numOfAddresses, numOfFramesAllocated, totalBytesUsed);
+    }
     return 0;
 }
