@@ -153,29 +153,15 @@ public:
 };
 
 int main(int argc, char *argv[]) {
-    std::string readWriteFilePath;
-    if (argc > 3) {
-        readWriteFilePath = argv[3];
-    } else {
-        std::cerr << "Usage: " << argv[0] << " trace_file readwrite_file" << std::endl;
+    if (argc < 4) {
+        std::cerr << "Usage: " << argv[0] << " trace_file readwrite_file num_frames" << std::endl;
         return 1;
     }
 
-    std::ifstream readWriteFile(readWriteFilePath);
-    if (!readWriteFile.is_open()) {
-        std::cerr << "Failed to open read/write file: " << readWriteFilePath << std::endl;
-        return 1;
-    }
+    std::string traceFilePath = argv[1];
+    std::string readWriteFilePath = argv[2];
+    int num_frames = std::stoi(argv[3]);
 
-    std::string accessModes;
-    std::getline(readWriteFile, accessModes);
-    readWriteFile.close();
-
-    if (accessModes.size() == 0) {
-        std::cerr << "Read/write file is empty" << std::endl;
-        return 1;
-    }
-    
     LogOptionsType logOptions;
     logOptions.pagetable_bitmasks = true;
     logOptions.addressTranslation = true;
@@ -183,22 +169,18 @@ int main(int argc, char *argv[]) {
     logOptions.vpn2pfn_with_pagereplace = true;
     logOptions.offset = false;
     logOptions.summary = false;
-
     
-    std::string traceFilePath;
-    int n = 256;  // Default number of frames
+    int n = 0; // Number of memory accesses
+    int ageOfLastAccess = 0; // Age of last access considered recent
+
     int cnt = 0;
-    for (int i = 1; i < argc; i++) {
-        if(strcmp(argv[i], "0") == 0) {
-            std::cerr << "Level 'NUMBER' page table must be at least 1 bit." << std::endl;
-            return 1;
-        }
-        if(strcmp(argv[i], "readwrites.txt") == 0) {
+    for (int i = 4; i < argc; i++) {
+        if (strcmp(argv[i], "readwrites.txt") == 0) {
             int bit1 = atoi(argv[i+1]); 
             int bit2 = atoi(argv[i+2]);
             int bit3 = atoi(argv[i+3]);
             cnt = bit1 + bit2 + bit3;
-            if(cnt > 28) {
+            if (cnt > 28) {
                 std::cerr << "Too many bits used in page tables." << std::endl;
                 return 1;
             }
@@ -219,51 +201,56 @@ int main(int argc, char *argv[]) {
             }
             i++;
         } else if (strcmp(argv[i], "-n") == 0 && i + 1 < argc) {
-            if(strcmp(argv[i+1], "0") == 0) {
+            n = atoi(argv[i + 1]);
+            if (n <= 0) {
                 std::cerr << "Number of memory accesses must be a number, greater than 0." << std::endl;
                 return 1;
             }
-            n = atoi(argv[i + 1]);
             i++;
-        }
-        
-        else if (strcmp(argv[i], "-f") == 0 && i + 1 < argc) {
+        } else if (strcmp(argv[i], "-f") == 0 && i + 1 < argc) {
             traceFilePath = argv[i + 1];
             i++;
-        }
-        else if (strcmp(argv[i], "-a") == 0 && i + 1 < argc) {
-            if strcmp(argv[i+1], "0") == 0) {
+        } else if (strcmp(argv[i], "-a") == 0 && i + 1 < argc) {
+            ageOfLastAccess = atoi(argv[i + 1]);
+            if (ageOfLastAccess <= 0) {
                 std::cerr << "Age of last access considered recent must be a number, greater than 0." << std::endl;
                 return 1;
             }
+            i++;
         }
     }
 
-    MemoryManagement memoryManagement(n, logOptions);
+    MemoryManagement memoryManagement(num_frames, logOptions);
 
-    if (!traceFilePath.empty()) {
-        std::ifstream traceFile(traceFilePath);
-        if (!traceFile.is_open()) {
-            std::cerr << "Number of available frames must be a number, greater than 0" << std::endl;
-            return 1;
-        }
-
-        std::string line;
-        while (std::getline(traceFile, line)) {
-            int virtual_address = std::stoi(line, nullptr, 16);
-            int physical_address = memoryManagement.translateAddress(virtual_address);
-            
-            if (physical_address != -1) {
-                std::cout << "Virtual address: " << std::hex << virtual_address
-                          << " translated to physical address: " << physical_address << std::endl;
-            } else {
-                std::cout << "Page fault occurred for virtual address: " << std::hex << virtual_address << "!" << std::endl;
-            }
-        }
-
-        traceFile.close();
-        readWriteFile.close();
+    std::ifstream traceFile(traceFilePath);
+    if (!traceFile.is_open()) {
+        std::cerr << "Failed to open trace file: " << traceFilePath << std::endl;
+        return 1;
     }
+
+    std::ifstream readWriteFile(readWriteFilePath);
+    if (!readWriteFile.is_open()) {
+        std::cerr << "Failed to open read/write file: " << readWriteFilePath << std::endl;
+        return 1;
+    }
+
+    std::string line;
+    char accessMode;
+    while (std::getline(traceFile, line)) {
+        int virtual_address = std::stoi(line, nullptr, 16);
+        readWriteFile.get(accessMode);
+        int physical_address = memoryManagement.translateAddress(virtual_address, accessMode);
+        
+        if (physical_address != -1) {
+            std::cout << "Virtual address: " << std::hex << virtual_address
+                      << " translated to physical address: " << physical_address << std::endl;
+        } else {
+            std::cout << "Page fault occurred for virtual address: " << std::hex << virtual_address << "!" << std::endl;
+        }
+    }
+
+    traceFile.close();
+    readWriteFile.close();
 
     if (logOptions.summary) {
         log_summary(PAGE_SIZE, memoryManagement.numOfPageReplaces, memoryManagement.pageTableHits, memoryManagement.numOfAddresses, memoryManagement.numOfFramesAllocated, memoryManagement.totalBytesUsed);
