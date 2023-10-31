@@ -14,16 +14,6 @@ const int PAGE_SIZE = 4096;
 const int PAGE_TABLE_ENTRIES = 1024;
 const int ADDRESS_SPACE = 32;
 
-struct LogOptionsType {
-    bool pagetable_bitmasks = false;
-    bool addressTranslation = false;
-    bool vpns_pfn = false;
-    bool vpn2pfn_with_pagereplace = false;
-    bool offset = false;
-    bool summary = false;
-};
-
-
 class PTE {
 public:
     bool valid;
@@ -55,7 +45,7 @@ public:
     int pageTableHits = 0;
     int numOfAddresses = 0;
     int numOfFramesAllocated = 0;
-    int totalBytesUsed = 0;
+    unsigned long totalBytesUsed = 0;
 
     MemoryManagement(size_t num_frames, LogOptionsType logOpt) : clock_hand(0), logOptions(logOpt) {
         for (size_t i = 0; i < num_frames; i++) {
