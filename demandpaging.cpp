@@ -3,37 +3,44 @@
 #include <queue>
 #include <fstream>
 #include <cmath>
+#include <string>
 #include <cstring>
 #include <stdio.h>
 #include <string.h>
 #include <ctime>
+#include <unistd.h>
 #include "log_helpers.h" 
 #include "demandpaging.h"
+#include "vaddr_tracereader.h"
 
 const int PAGE_SIZE = 4096;
 const int PAGE_TABLE_ENTRIES = 1024;
 const int ADDRESS_SPACE = 32;
 
+// Page Table Entry class
 class PTE {
 public:
     bool valid;
-    int PFN;
+    unsigned int pfn;
     int timestamp;
     PTE* next_level;
 
     PTE() : valid(false), PFN(-1), timestamp(-1), next_level(nullptr) {}
 };
 
+// Frame class represents a frame in physical memory
 class Frame {
 public:
-    int PFN;
+    unsigned int pfn;
     bool free;
-    int VPN;
+    unsigned unsigned int vpn;
     int timestamp;
 
-    Frame(int pfn) : PFN(pfn), free(true), VPN(-1), timestamp(-1) {}
+     // Constructor initializes a frame with a given PFN
+    Frame(unsigned int pfn) : PFN(pfn), free(true), VPN(-1), timestamp(-1) {}
 };
 
+// Memory Management class handles page table and frame allocation
 class MemoryManagement {
     std::vector<Frame> frames;
     PTE* topLevel;
@@ -47,6 +54,7 @@ public:
     int numOfFramesAllocated = 0;
     unsigned long totalBytesUsed = 0;
 
+    // Constructor initializes memory management
     MemoryManagement(size_t num_frames, LogOptionsType logOpt) : clock_hand(0), logOptions(logOpt) {
         for (size_t i = 0; i < num_frames; i++) {
             frames.push_back(Frame(i));
@@ -54,7 +62,8 @@ public:
         topLevel = new PTE[PAGE_TABLE_ENTRIES];
     }
 
-    void allocateFrameToPage(int vpn, int frameNumber) {
+     // Allocates a frame to a page
+    void allocateFrameToPage(unsigned int vpn, int frameNumber) {
         numOfFramesAllocated++;
         totalBytesUsed = numOfFramesAllocated * PAGE_SIZE;
 
@@ -79,11 +88,12 @@ public:
         logPageTableMapping(vpn, frameNumber, false);
     }
 
+    // Translates a virtual address to a physical address
     int translateAddress(int virtual_address, char accessMode) {
         numOfAddresses++;
 
         int offset = virtual_address % PAGE_SIZE;
-        int vpn = virtual_address / PAGE_SIZE;
+        unsigned int vpn = virtual_address / PAGE_SIZE;
         int pa = -1;
 
         PTE* currentLevel = topLevel;
@@ -106,7 +116,8 @@ public:
         return pa;
     }
 
-    void handlePageFault(int vpn) {
+    // Handles a page fault
+    void handlePageFault(unsigned int vpn) {
         int frameNumber = findFreeFrame();
         if (frameNumber == -1) {
             frameNumber = runWSClock();
@@ -119,6 +130,7 @@ public:
         allocateFrameToPage(vpn, frameNumber);
     }
 
+    // Finds a free frame
     int findFreeFrame() {
         for (size_t i = 0; i < frames.size(); i++) {
             if (frames[i].free) {
@@ -128,6 +140,7 @@ public:
         return -1;
     }
 
+    // Runs the WSClock algorithm to find a frame to replace
     int runWSClock() {
         while (true) {
             Frame& frame = frames[clock_hand];
@@ -138,7 +151,8 @@ public:
         }
     }
 
-    void logPageTableMapping(int vpn, int frameNumber, bool isPageReplacement) {
+    // Logs page table mappings
+    void logPageTableMapping(unsigned int vpn, int frameNumber, bool isPageReplacement) {
         if (logOptions.vpn2pfn_with_pagereplace && isPageReplacement) {
             log_mapping(vpn, frameNumber, frames[frameNumber].VPN, false);
         } else if (logOptions.vpns_pfn) {
@@ -146,6 +160,7 @@ public:
         }
     }
 
+    // Logs virtual to physical address translations
     void logVirtualToPhysicalAddressTranslation(int virtualAddress, int physicalAddress) {
         if (logOptions.addressTranslation) {
             log_va2pa(virtualAddress, physicalAddress);
@@ -153,6 +168,7 @@ public:
     }
 };
 
+// Main function handles command line arguments and runs the simulation
 int main(int argc, char *argv[]) {
     if (argc < 4) {
         std::cerr << "Usage: " << argv[0] << " trace_file readwrite_file num_frames" << std::endl;
