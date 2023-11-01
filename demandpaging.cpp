@@ -3,15 +3,14 @@
 #include <queue>
 #include <fstream>
 #include <cmath>
-#include <string>
 #include <cstring>
 #include <stdio.h>
 #include <string.h>
 #include <ctime>
-#include <unistd.h>
 #include "log_helpers.h" 
 #include "demandpaging.h"
 
+// Define constants
 const int PAGE_SIZE = 4096;
 const int PAGE_TABLE_ENTRIES = 1024;
 const int ADDRESS_SPACE = 32;
@@ -20,23 +19,24 @@ const int ADDRESS_SPACE = 32;
 class PTE {
 public:
     bool valid;
-    unsigned int pfn;
+    int PFN;
     int timestamp;
     PTE* next_level;
 
+    // Constructor initializes PTE
     PTE() : valid(false), PFN(-1), timestamp(-1), next_level(nullptr) {}
 };
 
 // Frame class represents a frame in physical memory
 class Frame {
 public:
-    unsigned int pfn;
+    int PFN;
     bool free;
-    unsigned unsigned int vpn;
+    int VPN;
     int timestamp;
 
-     // Constructor initializes a frame with a given PFN
-    Frame(unsigned int pfn) : PFN(pfn), free(true), VPN(-1), timestamp(-1) {}
+    // Constructor initializes a frame with a given PFN
+    Frame(int pfn) : PFN(pfn), free(true), VPN(-1), timestamp(-1) {}
 };
 
 // Memory Management class handles page table and frame allocation
@@ -61,8 +61,8 @@ public:
         topLevel = new PTE[PAGE_TABLE_ENTRIES];
     }
 
-     // Allocates a frame to a page
-    void allocateFrameToPage(unsigned int vpn, int frameNumber) {
+    // Allocates a frame to a page
+    void allocateFrameToPage(int vpn, int frameNumber) {
         numOfFramesAllocated++;
         totalBytesUsed = numOfFramesAllocated * PAGE_SIZE;
 
@@ -92,7 +92,7 @@ public:
         numOfAddresses++;
 
         int offset = virtual_address % PAGE_SIZE;
-        unsigned int vpn = virtual_address / PAGE_SIZE;
+        int vpn = virtual_address / PAGE_SIZE;
         int pa = -1;
 
         PTE* currentLevel = topLevel;
@@ -116,7 +116,7 @@ public:
     }
 
     // Handles a page fault
-    void handlePageFault(unsigned int vpn) {
+    void handlePageFault(int vpn) {
         int frameNumber = findFreeFrame();
         if (frameNumber == -1) {
             frameNumber = runWSClock();
@@ -151,7 +151,7 @@ public:
     }
 
     // Logs page table mappings
-    void logPageTableMapping(unsigned int vpn, int frameNumber, bool isPageReplacement) {
+    void logPageTableMapping(int vpn, int frameNumber, bool isPageReplacement) {
         if (logOptions.vpn2pfn_with_pagereplace && isPageReplacement) {
             log_mapping(vpn, frameNumber, frames[frameNumber].VPN, false);
         } else if (logOptions.vpns_pfn) {
@@ -169,11 +169,14 @@ public:
 
 // Main function handles command line arguments and runs the simulation
 int main(int argc, char *argv[]) {
+    
+    // Check for correct number of arguments
     if (argc < 4) {
         std::cerr << "Usage: " << argv[0] << " trace_file readwrite_file num_frames" << std::endl;
         return 1;
     }
 
+    // Parse command line arguments
     std::string traceFilePath = argv[1];
     std::string readWriteFilePath = argv[2];
     int num_frames = std::stoi(argv[3]);
@@ -236,20 +239,24 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    // Initialize memory management
     MemoryManagement memoryManagement(num_frames, logOptions);
 
+    // Open trace file
     std::ifstream traceFile(traceFilePath);
     if (!traceFile.is_open()) {
         std::cerr << "Number of available frames must be a number, greater than 0" << std::endl;
         return 1;
     }
 
+    // Open read/write file
     std::ifstream readWriteFile(readWriteFilePath);
     if (!readWriteFile.is_open()) {
         std::cerr << "Failed to open read/write file: " << readWriteFilePath << std::endl;
         return 1;
     }
 
+    // Main simulation loop
     std::string line;
     char accessMode;
     while (std::getline(traceFile, line)) {
@@ -271,9 +278,11 @@ int main(int argc, char *argv[]) {
     }
 }
 
+    // Close files
     traceFile.close();
     readWriteFile.close();
 
+    // Log summary
     if (logOptions.summary) {
         log_summary(PAGE_SIZE, memoryManagement.numOfPageReplaces, memoryManagement.pageTableHits, memoryManagement.numOfAddresses, memoryManagement.numOfFramesAllocated, memoryManagement.totalBytesUsed);
     }
