@@ -11,7 +11,6 @@
 #include <unistd.h>
 #include "log_helpers.h" 
 #include "demandpaging.h"
-#include "vaddr_tracereader.h"
 
 const int PAGE_SIZE = 4096;
 const int PAGE_TABLE_ENTRIES = 1024;
